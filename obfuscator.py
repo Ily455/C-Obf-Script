@@ -46,7 +46,7 @@ standard_functions = {
 
 excluded=keywords.union(preprocessors.union(backslashes.union(standard_functions)))
 
-###FUNCTION###
+###FUNCTIONS###
 def remove_headers(code):
     removed_header = []
     removed_lib = []
@@ -60,7 +60,7 @@ def remove_headers(code):
     code = re.sub(macros_pattern, lambda match: removed_macros.append(match.group(0)), code, flags=re.MULTILINE)
     code = re.sub(header_pattern, lambda match: removed_header.append(match.group(0)), code, flags=re.MULTILINE)
     
-    print(removed_header, removed_lib, removed_macros)
+    # print(removed_header, removed_lib, removed_macros)
     return code, removed_header, removed_lib, removed_macros
 
 def add_headers(code, removed_header):
@@ -72,7 +72,6 @@ def add_headers(code, removed_header):
         return result
     headers = '\n'.join(removed_header)
     return delete_empty_lines(headers + '\n' + code)
-
 
 def remove_comments(code):
     # Remove C-style comments (/* ... */)
@@ -87,23 +86,23 @@ def remove_whitespace(code):
     return code
 
 def replace_identifiers(code):
-    excluded_functions = ["printf", "puts", "fputs", "fprintf"]
-    def find_function_calls(code):
-        # Regular expression pattern to find function calls with their arguments
-        pattern = r'\b(?:printf|puts|fputs|fprintf|fputc|fwrite|putchar)\s*\((?:[^()]|\((?:[^()]+|\([^()]*\))*\))*\);'
-        return re.findall(pattern, code)
+    # excluded_functions = ["printf", "puts", "fputs", "fprintf", "fputc", "fwrite", "putchar"]
+    # def find_function_calls(code):
+    #     # Regular expression pattern to find function calls with their arguments
+    #     pattern = r'\b(?:printf|puts|fputs|fprintf|fputc|fwrite|putchar)\s*\((?:[^()]|\((?:[^()]+|\([^()]*\))*\))*\);'
+    #     return re.findall(pattern, code)
     
-    def replace_identifiers_within_functions(text, excluded_functions, variable_mapping, detected_identifiers):
-        for function_call in find_function_calls(text):
-            # Exclude function calls that are in the excluded list
-            if any(func in function_call for func in excluded_functions):
-                continue
-            # Replace identifiers within the function call
-            for variable, replacement in variable_mapping.items():
-                if variable in detected_identifiers:
-                    # If the identifier was already detected, replace it with the same new string
-                    text = text.replace(variable, replacement)
-        return text
+    # def replace_identifiers_within_functions(text, excluded_functions, variable_mapping, detected_identifiers):
+    #     for function_call in excluded_functions:
+    #         # Exclude function calls that are in the excluded list
+    #         if any(func in function_call for func in excluded_functions):
+    #             continue
+    #         # Replace identifiers within the function call
+    #         for variable, replacement in variable_mapping.items():
+    #             if variable in detected_identifiers:
+    #                 # If the identifier was already detected, replace it with the same new string
+    #                 text = text.replace(variable, replacement)
+    #     return text
         
     def find_variables(code):
         pattern = r'\b[A-Za-z_][A-Za-z0-9_]*\s*(?:\[\s*\d*\s*\])?\s*;'
@@ -114,12 +113,31 @@ def replace_identifiers(code):
             if declaration not in excluded:
                 tokens = declaration.strip().split()
                 variables.add(tokens[0])
-        print(variables)
+        # print(variables)
         return variables
     
     def rename_vars(code, variable_mapping):
+        pattern = r'"(?:\\.|[^"\\])*?"'
+        qsp_texts = re.findall(pattern, code)
+        # quoted_texts=[hh.replace(" ","\\\\x20") for hh in quoted_texts]
+        # print(qsp_texts)
+        # quotes = set()
+        # for declaration in qsp_texts:
+        #     tokens = declaration.split()
+        #     quotes.add(tokens[0])
+        quotes={qt for qt in qsp_texts}
+        print(quotes)
+        mapped_quotes=map_vars(quotes)
+        print(mapped_quotes)
+        # print(variable_mapping)
+        # print(variable_mapping)
+        # excludeThisToo
+        for variable, replacement in mapped_quotes.items():
+            code = re.sub(r'{}'.format(re.escape(variable)), replacement, code)
         for variable, replacement in variable_mapping.items():
             code = re.sub(r'\b{}\b'.format(re.escape(variable)), replacement, code)
+        for variable, replacement in mapped_quotes.items():
+            code = re.sub(re.escape(replacement), variable.replace("\\n","\\\\n"), code)
         return code
     
     def map_vars(vars):
@@ -131,8 +149,8 @@ def replace_identifiers(code):
     
     codeVars=find_variables(code)
     map=map_vars(codeVars)
-    newCode=replace_identifiers_within_functions(code, excluded_functions, codeVars, map)
-    newCode=rename_vars(newCode, map)
+    # newCode=replace_identifiers_within_functions(code, excluded_functions, map, codeVars)
+    newCode=rename_vars(code, map)
     return newCode
 
 def preprocess_code(code):
@@ -143,7 +161,6 @@ def preprocess_code(code):
     code = replace_identifiers(code)
     code = add_headers(code, removed_header)
     code = add_headers(code, removed_lib)
-    # code = remove_whitespace(code)
     return code
 
 if __name__ == "__main__":
@@ -172,6 +189,7 @@ if __name__ == "__main__":
     print(f"Obfuscated code written to '{output_file}'.")
 
 ##########################################################
+###old impl###
 # def replace_identifiers(code):
 #     # Define sets for predefined keywords, constants, and types
 #     predefined_keywords = {
