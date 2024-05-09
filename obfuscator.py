@@ -10,6 +10,7 @@ import sys
 import os
 
 ###EXCLUDES###
+
 backslashes={"\n", "\t", "\0"}
 
 keywords={"alignas", "alignof", "auto", "bool", "break", "case", "char", "const", "constexpr", "continue",
@@ -44,23 +45,42 @@ standard_functions = {
     "vsprintf"
 }
 
-excluded=keywords.union(preprocessors.union(backslashes.union(standard_functions)))
+predefined_types = {
+    'clock_t', 'size_t', 'ptrdiff_t', 'wchar_t', 'int8_t', 'uint8_t', 'int16_t',
+    'uint16_t', 'int32_t', 'uint32_t', 'int64_t', 'uint64_t', 'intptr_t', 'uintptr_t',
+    'intmax_t', 'uintmax_t', 'time_t', 'clockid_t', 'pid_t', 'gid_t', 'uid_t', 'mode_t',
+    'dev_t', 'off_t', 'ino_t', 'blkcnt_t', 'blksize_t', 'fsblkcnt_t', 'fsfilcnt_t',
+    'key_t', 'va_list'
+}
+
+excluded=keywords.union(preprocessors.union(backslashes.union(standard_functions.union(predefined_types))))
+
+###INCLUDES###
+
+# key = ''.join(random.choice(string.ascii_letters) for _ in range(64))
+
+# print(f"here is the key, include it in the top of the obfuscated C code in order to print readable strings")
+
+# key = "hh"
+
+# encrypt_key=f'#define SECRET_KEY "{key}"'+'''\n'''
+
+# encrypt=r'''#define ENCRYPT(text) ({ char *encrypted_text = (char *)malloc(strlen(text) + 1); for (size_t i = 0; i < strlen(text); i++) { encrypted_text[i] = text[i] ^ SECRET_KEY[i % strlen(SECRET_KEY)]; } encrypted_text[strlen(text)] = '\0'; encrypted_text; })'''+'''\n'''
+
 
 ###FUNCTIONS###
+
 def remove_headers(code):
     removed_header = []
     removed_lib = []
     removed_macros = []
-    # Regular expression pattern to match header elements
     lib_pattern = r'^\s*#(include).*?$'
     macros_pattern = r'^\s*#(define|ifdef|ifndef).*?$'
     header_pattern = r'^\s*#(include|define|undef|if|ifdef|ifndef|else|elif|endif|line|error|pragma).*?$'
-    # Find and remove headers, storing them in removed_header list
     code = re.sub(lib_pattern, lambda match: removed_lib.append(match.group(0)), code, flags=re.MULTILINE)
-    code = re.sub(macros_pattern, lambda match: removed_macros.append(match.group(0)), code, flags=re.MULTILINE)
-    code = re.sub(header_pattern, lambda match: removed_header.append(match.group(0)), code, flags=re.MULTILINE)
+    # code = re.sub(macros_pattern, lambda match: removed_macros.append(match.group(0)), code, flags=re.MULTILINE)
+    # code = re.sub(header_pattern, lambda match: removed_header.append(match.group(0)), code, flags=re.MULTILINE)
     
-    # print(removed_header, removed_lib, removed_macros)
     return code, removed_header, removed_lib, removed_macros
 
 def add_headers(code, removed_header):
@@ -74,38 +94,24 @@ def add_headers(code, removed_header):
     return delete_empty_lines(headers + '\n' + code)
 
 def remove_comments(code):
-    # Remove C-style comments (/* ... */)
     code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
-    # Remove C++ style comments (// ...)
     code = re.sub(r'//.*?\n', '\n', code)
     return code
 
 def remove_whitespace(code):
-    # Remove extra whitespace
     code = re.sub(r'\s+', ' ', code)
     return code
 
+# def encrypt_str(str):
+#     encrypted_text = ""
+#     for i in range(len(str)):
+#         encrypted_text += chr((ord(str[i]) ^ ord(key[i % len(key)])))
+#     print(encrypted_text.encode())
+#     return encrypted_text.encode()
+
 def replace_identifiers(code):
-    # excluded_functions = ["printf", "puts", "fputs", "fprintf", "fputc", "fwrite", "putchar"]
-    # def find_function_calls(code):
-    #     # Regular expression pattern to find function calls with their arguments
-    #     pattern = r'\b(?:printf|puts|fputs|fprintf|fputc|fwrite|putchar)\s*\((?:[^()]|\((?:[^()]+|\([^()]*\))*\))*\);'
-    #     return re.findall(pattern, code)
-    
-    # def replace_identifiers_within_functions(text, excluded_functions, variable_mapping, detected_identifiers):
-    #     for function_call in excluded_functions:
-    #         # Exclude function calls that are in the excluded list
-    #         if any(func in function_call for func in excluded_functions):
-    #             continue
-    #         # Replace identifiers within the function call
-    #         for variable, replacement in variable_mapping.items():
-    #             if variable in detected_identifiers:
-    #                 # If the identifier was already detected, replace it with the same new string
-    #                 text = text.replace(variable, replacement)
-    #     return text
-        
+
     def find_variables(code):
-        pattern = r'\b[A-Za-z_][A-Za-z0-9_]*\s*(?:\[\s*\d*\s*\])?\s*;'
         pattern = r"(?:\w+\s+)(?!main)(?:\*)*([a-zA-Z_][a-zA-Z0-9_]*)"
         variable_declarations = re.findall(pattern, code)
         variables = set()
@@ -113,31 +119,36 @@ def replace_identifiers(code):
             if declaration not in excluded:
                 tokens = declaration.strip().split()
                 variables.add(tokens[0])
-        # print(variables)
         return variables
     
     def rename_vars(code, variable_mapping):
         pattern = r'"(?:\\.|[^"\\])*?"'
         qsp_texts = re.findall(pattern, code)
-        # quoted_texts=[hh.replace(" ","\\\\x20") for hh in quoted_texts]
-        # print(qsp_texts)
-        # quotes = set()
-        # for declaration in qsp_texts:
-        #     tokens = declaration.split()
-        #     quotes.add(tokens[0])
+        # mapped_encryptions={}
+        # enc_qsp_texts=[]
+        # for t in range(len(qsp_texts)):
+        #     enc_qsp_texts.append(str(encrypt_str(qsp_texts[t]))[1:].replace("\\","\\\\"))
+        #     mapped_encryptions[qsp_texts[t]] = enc_qsp_texts[t]
+        # quotes={qt for qt in enc_qsp_texts}
         quotes={qt for qt in qsp_texts}
-        print(quotes)
         mapped_quotes=map_vars(quotes)
-        print(mapped_quotes)
-        # print(variable_mapping)
-        # print(variable_mapping)
-        # excludeThisToo
+        # print(mapped_encryptions)
+        # print(mapped_quotes)
+        #encrypt strs
+        # for variable, replacement in mapped_encryptions.items():
+        #     code = code.replace(r"{}".format(variable), replacement)
+        # print(code)
+        # replace encs with their corresponding randoms
         for variable, replacement in mapped_quotes.items():
             code = re.sub(r'{}'.format(re.escape(variable)), replacement, code)
+        #randomizing identifiers
         for variable, replacement in variable_mapping.items():
             code = re.sub(r'\b{}\b'.format(re.escape(variable)), replacement, code)
+        #bringing back the strs
         for variable, replacement in mapped_quotes.items():
-            code = re.sub(re.escape(replacement), variable.replace("\\n","\\\\n"), code)
+            # code = code.replace(replacement, 'ENCRYPT('+variable+')')
+            code = code.replace(replacement, variable)
+            # print(variable)
         return code
     
     def map_vars(vars):
@@ -148,19 +159,20 @@ def replace_identifiers(code):
         return variable_mapping
     
     codeVars=find_variables(code)
+    # print(codeVars)
     map=map_vars(codeVars)
-    # newCode=replace_identifiers_within_functions(code, excluded_functions, map, codeVars)
     newCode=rename_vars(code, map)
     return newCode
 
 def preprocess_code(code):
     code = remove_comments(code)
     code, removed_header, removed_lib, removed_macros = remove_headers(code)
-    code = remove_whitespace(code)
-    code = add_headers(code, removed_macros)
+    # code = remove_whitespace(code)
+    # code = add_headers(code, removed_macros)
     code = replace_identifiers(code)
-    code = add_headers(code, removed_header)
+    # code = add_headers(code, removed_header)
     code = add_headers(code, removed_lib)
+    print(removed_header)
     return code
 
 if __name__ == "__main__":
@@ -203,13 +215,6 @@ if __name__ == "__main__":
 #         'NULL', 'true', 'false', 'CLOCKS_PER_SEC'
 #     }
 
-#     predefined_types = {
-#         'clock_t', 'size_t', 'ptrdiff_t', 'wchar_t', 'int8_t', 'uint8_t', 'int16_t',
-#         'uint16_t', 'int32_t', 'uint32_t', 'int64_t', 'uint64_t', 'intptr_t', 'uintptr_t',
-#         'intmax_t', 'uintmax_t', 'time_t', 'clockid_t', 'pid_t', 'gid_t', 'uid_t', 'mode_t',
-#         'dev_t', 'off_t', 'ino_t', 'blkcnt_t', 'blksize_t', 'fsblkcnt_t', 'fsfilcnt_t',
-#         'key_t', 'va_list'
-#     }
 
 #     # Combine predefined keywords, constants, and types
 #     exclude_identifiers = predefined_keywords.union(predefined_constants, predefined_types)
@@ -233,3 +238,23 @@ if __name__ == "__main__":
 #     code = re.sub(r'printf\s*\("([^"]*)"\)', exclude_printf, code)
     
 #     return code
+
+##########################################################################################################
+
+    # excluded_functions = ["printf", "puts", "fputs", "fprintf", "fputc", "fwrite", "putchar"]
+    # def find_function_calls(code):
+    #     # Regular expression pattern to find function calls with their arguments
+    #     pattern = r'\b(?:printf|puts|fputs|fprintf|fputc|fwrite|putchar)\s*\((?:[^()]|\((?:[^()]+|\([^()]*\))*\))*\);'
+    #     return re.findall(pattern, code)
+    
+    # def replace_identifiers_within_functions(text, excluded_functions, variable_mapping, detected_identifiers):
+    #     for function_call in excluded_functions:
+    #         # Exclude function calls that are in the excluded list
+    #         if any(func in function_call for func in excluded_functions):
+    #             continue
+    #         # Replace identifiers within the function call
+    #         for variable, replacement in variable_mapping.items():
+    #             if variable in detected_identifiers:
+    #                 # If the identifier was already detected, replace it with the same new string
+    #                 text = text.replace(variable, replacement)
+    #     return text
