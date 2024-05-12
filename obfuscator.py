@@ -71,11 +71,10 @@ excluded=keywords.union(preprocessors.union(backslashes.union(standard_functions
 ###FUNCTIONS###
 
 def remove_headers(code):
-
   pattern = r"""^\s*#(include|define|undef|if|ifdef|ifndef|else|elif|endif|line|error|pragma).*?$"""
   removed_lines, removed_header, removed_lib, removed_macro = [], [], [], []
   for match in re.finditer(pattern, code, flags=re.MULTILINE):
-    removed_lines.append(match.group(0))
+    removed_lines.append(match.group(0).strip("\n"))
     kind = match.group(1)
     if kind in ("include",):
       removed_lib.append(match.group(0).strip("\n"))
@@ -83,21 +82,21 @@ def remove_headers(code):
       removed_macro.append(match.group(0).strip("\n"))
     else:
       removed_header.append(match.group(0).strip("\n"))
-
-  code = "".join([line for line in code.splitlines() if line not in removed_lines])
+  code = '\n'.join([line for line in code.splitlines() if line not in removed_lines])
+#   print(code)
 
   return code, removed_header, removed_lib, removed_macro
 
 def add_headers(code, removed_header):
-    def delete_empty_lines(text):
-        lines = text.split('\n')
-        non_empty_lines = [line for line in lines if line.strip()]
-        result = '\n'.join(non_empty_lines)
+    # def delete_empty_lines(text):
+    #     lines = text.split('\n')
+    #     non_empty_lines = [line for line in lines if line.strip()]
+    #     result = '\n'.join(non_empty_lines)
 
-        return result
+    #     return result
     headers = '\n'.join(removed_header)
-    return delete_empty_lines(headers + '\n' + code)
-
+    # return delete_empty_lines(headers + '\n' + code)
+    return headers + '\n' + code
 def remove_comments(code):
     code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
     code = re.sub(r'//.*?\n', '\n', code)
@@ -172,14 +171,14 @@ def replace_identifiers(code):
 def preprocess_code(code):
     code = remove_comments(code)
     code, removed_header, removed_lib, removed_macros = remove_headers(code)
-    # code = remove_whitespace(code)
-    # code = add_headers(code, removed_macros)
+    code = remove_whitespace(code)
+    code = add_headers(code, removed_macros)
     code = replace_identifiers(code)
     # code = add_headers(code, removed_header)
     code = add_headers(code, removed_lib)
-    print(removed_lib)
-    print(removed_header)
-    print(removed_macros)
+    # print(removed_lib)
+    # print(removed_header)
+    # print(removed_macros)
     return code
 
 if __name__ == "__main__":
