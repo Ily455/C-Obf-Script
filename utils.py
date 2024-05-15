@@ -1,5 +1,7 @@
 ###SCRIPT WRITTEN BY @ILY455, REFER TO https://github.com/Ily455/C-Obf-Script FOR LICENSE AND USAGE
-###THIS SCRIPT IS NOT TESTED FOR PRODUCTION ENVIRONMENTS, MAKE SURE YOU DO SO BEFORE RELYING ON ANY OF ITS OUTCOMES
+###THIS SCRIPT IS NOT TESTED FOR PRODUCTION ENVIRONMENTS NEITHER CAN BE RELIED ON TO PROVIDE ANY 
+###SORT OF SECURITY, BECAUSE IT DOESN'T (SOURCE OBFUSCATION IN GENERAL DOESN'T), MAKE SURE YOU DO 
+###SO BEFORE RELYING ON ANY OF ITS OUTCOMES
 ###############################################################################
 #### OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF-OBF###
 ###############################################################################
@@ -44,9 +46,7 @@ predefined_constants = {
     'LLONG_MAX',
     'wchar_t',
     'ptrdiff_t',
-    'ULLONG_MAX'
-    # add the constants that you know your C code is referencing
-}
+    'ULLONG_MAX'}
 
 keywords={"alignas", "alignof", "auto", "bool", "break", "case", "char", "const", "constexpr", "continue",
     "default", "do", "double", "else", "enum", "extern", "false", "float", "for", "goto", "if", "inline",
@@ -85,9 +85,9 @@ predefined_types = {
     'uint16_t', 'int32_t', 'uint32_t', 'int64_t', 'uint64_t', 'intptr_t', 'uintptr_t',
     'intmax_t', 'uintmax_t', 'time_t', 'clockid_t', 'pid_t', 'gid_t', 'uid_t', 'mode_t',
     'dev_t', 'off_t', 'ino_t', 'blkcnt_t', 'blksize_t', 'fsblkcnt_t', 'fsfilcnt_t',
-    'key_t', 'va_list'
-}
+    'key_t', 'va_list'}
 
+#chof wach t9d dir hadi b tari9a 7sn
 excluded=keywords.union(preprocessors.union(backslashes.union(standard_functions.union(predefined_types.union(predefined_constants)))))
 
 ###INCLUDES###
@@ -106,22 +106,46 @@ excluded=keywords.union(preprocessors.union(backslashes.union(standard_functions
 ###FUNCTIONS###
 
 def remove_headers(code):
-  pattern = r"""^\s*#(include|define|undef|if|ifdef|ifndef|else|elif|endif|line|error|pragma).*?$"""
-  removed_lines, removed_header, removed_lib, removed_macro = [], [], [], []
-  for match in re.finditer(pattern, code, flags=re.MULTILINE):
-    removed_lines.append(match.group(0).strip("\n"))
-    kind = match.group(1)
-    if kind in ("include",):
-      removed_lib.append(match.group(0).strip("\n"))
+    removed_lines, removed_header, removed_lib, removed_macro = [], [], [], []
+    pattern = r"""^\s*#(include|define|undef|if|ifdef|ifndef|else|elif|endif|line|error|pragma).*?$"""
+    for match in re.finditer(pattern, code, flags=re.MULTILINE):
+        removed_lines.append(match.group(0).strip("\n"))
+        kind = match.group(1)
+        if kind in ("include",):
+            removed_lib.append(match.group(0).strip("\n"))
     # elif kind in ("define", "ifdef", "ifndef"):
     #   removed_macro.append(match.group(0).strip("\n"))
-    else:
-      removed_header.append(match.group(0).strip("\n"))
-  code = '\n'.join([line for line in code.splitlines() if line not in removed_lines])
-#   print(code)
+    # else:
+    #     removed_header.append(match.group(0).strip("\n"))
+    code = '\n'.join([line for line in code.splitlines() if line not in removed_lines])
 
-  return code, removed_header, removed_lib, removed_macro
+    return code, removed_header, removed_lib, removed_macro
+'''
+def remove_macros(code):
+    pattern = r"""^\s*#(if|ifdef|ifndef)\b.*?$"""  # Match directive start
+    end_pattern = r"""^\s*#endif\b.*?$"""  # Match directive end
 
+    conditional_blocks = []
+    stack = []  # Track nesting of conditional directives
+    new_code = []
+
+    for line in code.splitlines():
+        match = re.match(pattern, line)
+        end_match = re.match(end_pattern, line)
+
+        if match:
+            stack.append(match.group(1))  # Push directive type onto stack
+        elif end_match:
+            if not stack:  # Handle unmatched #endif
+                raise ValueError("Unmatched #endif directive")
+            stack.pop()  # Pop corresponding directive from stack
+        else:
+            if stack:  # Only keep code within conditional blocks
+                conditional_blocks.append(line)
+            new_code.append(line)
+
+    return '\n'.join(new_code), conditional_blocks
+'''
 def add_headers(code, removed_header):
     # def delete_empty_lines(text):
     #     lines = text.split('\n')
@@ -133,7 +157,7 @@ def add_headers(code, removed_header):
     # return delete_empty_lines(headers + '\n' + code)
     return headers + '\n' + code
 def remove_comments(code):
-    code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
+    # code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
     code = re.sub(r'//.*?\n', '\n', code)
     return code
 
@@ -222,14 +246,14 @@ def replace_identifiers(code, removed_lib, output_dir):
 
 def preprocess_code(code, output_dir):
     code = remove_comments(code)
-    # code = replace_identifiers(code)
-    code, removed_header, removed_lib, removed_macros = remove_headers(code)
-    code = remove_whitespace(code)
-    code = add_headers(code, removed_macros)
-    code = add_headers(code, removed_header)
-    code = replace_identifiers(code, removed_lib, output_dir)
-    code = add_headers(code, removed_lib)
+    # code, removed_header, removed_lib, removed_macros = remove_headers(code)
     # print(removed_lib)
+    # code, removed_header = remove_macros(code)
+    # code = remove_whitespace(code)
+    # code = add_headers(code, removed_macros)
+    # code = add_headers(code, removed_header)
+    # code = replace_identifiers(code, removed_lib, output_dir)
+    # code = add_headers(code, removed_lib)
     # print(removed_header)
     # print(removed_macros)
     return code
