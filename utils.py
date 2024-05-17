@@ -105,21 +105,33 @@ excluded=keywords.union(preprocessors.union(backslashes.union(standard_functions
 
 ###FUNCTIONS###
 
-def remove_headers(code):
-    removed_lines, removed_header, removed_lib, removed_macro = [], [], [], []
-    pattern = r"""^\s*#(include|define|undef|if|ifdef|ifndef|else|elif|endif|line|error|pragma).*?$"""
-    for match in re.finditer(pattern, code, flags=re.MULTILINE):
+def remove_libs(code):
+    removed_lib, removed_lines = [], []
+    patternlib = r"""^\s*#(include).*?$"""
+    for match in re.finditer(patternlib, code, flags=re.MULTILINE):
         removed_lines.append(match.group(0).strip("\n"))
         kind = match.group(1)
         if kind in ("include",):
             removed_lib.append(match.group(0).strip("\n"))
-    # elif kind in ("define", "ifdef", "ifndef"):
-    #   removed_macro.append(match.group(0).strip("\n"))
-    # else:
-    #     removed_header.append(match.group(0).strip("\n"))
     code = '\n'.join([line for line in code.splitlines() if line not in removed_lines])
 
-    return code, removed_header, removed_lib, removed_macro
+    return code, removed_lib
+
+# def remove_headers(code):
+#     removed_header = []
+#     pattern = r"""^\s*#(define|undef|if|ifdef|ifndef|else|elif|endif|line|error|pragma).*?$"""
+#     for match in re.finditer(patternlib, code, flags=re.MULTILINE):
+#         removed_lines.append(match.group(0).strip("\n"))
+#         kind = match.group(1)
+#         if kind in ("include",):
+#             removed_lib.append(match.group(0).strip("\n"))
+#     # elif kind in ("define", "ifdef", "ifndef"):
+#     #   removed_macro.append(match.group(0).strip("\n"))
+#     # else:
+#     #     removed_header.append(match.group(0).strip("\n"))
+#     code = '\n'.join([line for line in code.splitlines() if line not in removed_lines])
+
+#     return code, removed_header, removed_lib, removed_macro
 '''
 def remove_macros(code):
     pattern = r"""^\s*#(if|ifdef|ifndef)\b.*?$"""  # Match directive start
@@ -246,14 +258,14 @@ def replace_identifiers(code, removed_lib, output_dir):
 
 def preprocess_code(code, output_dir):
     code = remove_comments(code)
-    # code, removed_header, removed_lib, removed_macros = remove_headers(code)
+    code, removed_lib = remove_libs(code)
     # print(removed_lib)
     # code, removed_header = remove_macros(code)
     # code = remove_whitespace(code)
     # code = add_headers(code, removed_macros)
     # code = add_headers(code, removed_header)
-    # code = replace_identifiers(code, removed_lib, output_dir)
-    # code = add_headers(code, removed_lib)
+    code = replace_identifiers(code, removed_lib, output_dir)
+    code = add_headers(code, removed_lib)
     # print(removed_header)
     # print(removed_macros)
     return code
