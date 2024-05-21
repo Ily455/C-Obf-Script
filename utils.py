@@ -168,24 +168,64 @@ def add_headers(code, removed_header):
     headers = '\n'.join(removed_header)
     # return delete_empty_lines(headers + '\n' + code)
     return headers + '\n' + code
-def remove_comments(code):
+def remove_comments_type1(code):
     # code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
     code = re.sub(r'//.*?\n', '\n', code)
     return code
 
+def remove_comments_type2(text):
+    pattern = re.compile(r'/\*.*?\*/', re.DOTALL)
+    
+    # Use sub() to replace block comments with an empty string
+    cleaned_text = re.sub(pattern, '', text)
+    
+    return cleaned_text
 def remove_whitespace(text):
-    # code = re.sub(r'\n', ' ', code)
-    # return code
     lines = text.split('\n')  # Split the text into lines
-    non_empty_lines = [line for line in lines if line.strip() != '']  # Filter out empty lines
-    return '\n'.join(non_empty_lines)  # Join the non-empty lines back into a single string
+    non_empty_lines = []
+    
+    for i, line in enumerate(lines):
+        if line.strip() == '' and i > 0 and lines[i - 1].endswith('\\'):
+            non_empty_lines.append(line)  # Keep the empty line if the previous line ends with a backslash
+        elif line.strip() != '':
+            non_empty_lines.append(line)  # Keep the non-empty line
 
+    return '\n'.join(non_empty_lines)  # Join the lines back into a single string
 # def encrypt_str(str):
 #     encrypted_text = ""
 #     for i in range(len(str)):
 #         encrypted_text += chr((ord(str[i]) ^ ord(key[i % len(key)])))
 #     print(encrypted_text.encode())
 #     return encrypted_text.encode()
+
+def remove_indentation(text):
+    # Split the text into lines
+    lines = text.split('\n')
+    
+    # Remove leading whitespace from each line
+    unindented_lines = [line.lstrip() for line in lines]
+    
+    # Join the unindented lines back into a single string
+    unindented_text = '\n'.join(unindented_lines)
+    
+    return unindented_text
+
+def add_semicolon(text):
+    # Split the text into lines
+    lines = text.split('\n')
+    
+    # Add semicolon to lines that don't end with a semicolon
+    for i in range(len(lines)):
+        if lines[i].strip() and not lines[i].strip().endswith(';'):
+            lines[i] += ';'
+
+    # Remove line return character
+    cleaned_lines = [line.strip() for line in lines if line.strip()]
+    
+    # Join the lines back into a single string
+    cleaned_text = '\n'.join(cleaned_lines)
+    
+    return cleaned_text
 
 def replace_identifiers(code, removed_lib, output_dir):
 
@@ -260,7 +300,8 @@ def replace_identifiers(code, removed_lib, output_dir):
     return newCode
 
 def preprocess_code(code, output_dir):
-    code = remove_comments(code)
+    code = remove_comments_type1(code)
+    code = remove_comments_type2(code)
     code, removed_lib = remove_libs(code)
     # print(removed_lib)
     # code, removed_header = remove_macros(code)
@@ -269,6 +310,8 @@ def preprocess_code(code, output_dir):
     # code = add_headers(code, removed_header)
     code = replace_identifiers(code, removed_lib, output_dir)
     code = add_headers(code, removed_lib)
+    code = remove_indentation(code)
+    # code = add_semicolon(code)
     # print(removed_header)
     # print(removed_macros)
     return code
