@@ -173,9 +173,12 @@ def remove_comments(code):
     code = re.sub(r'//.*?\n', '\n', code)
     return code
 
-def remove_whitespace(code):
-    code = re.sub(r'\s+', ' ', code)
-    return code
+def remove_whitespace(text):
+    # code = re.sub(r'\n', ' ', code)
+    # return code
+    lines = text.split('\n')  # Split the text into lines
+    non_empty_lines = [line for line in lines if line.strip() != '']  # Filter out empty lines
+    return '\n'.join(non_empty_lines)  # Join the non-empty lines back into a single string
 
 # def encrypt_str(str):
 #     encrypted_text = ""
@@ -261,7 +264,7 @@ def preprocess_code(code, output_dir):
     code, removed_lib = remove_libs(code)
     # print(removed_lib)
     # code, removed_header = remove_macros(code)
-    # code = remove_whitespace(code)
+    code = remove_whitespace(code)
     # code = add_headers(code, removed_macros)
     # code = add_headers(code, removed_header)
     code = replace_identifiers(code, removed_lib, output_dir)
